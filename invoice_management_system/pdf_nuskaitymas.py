@@ -1,4 +1,3 @@
-# import PyPDF2
 from PyPDF2 import PdfReader
 import tkinter as tk
 from tkinter import ttk

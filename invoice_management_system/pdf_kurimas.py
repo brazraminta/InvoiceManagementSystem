@@ -1,4 +1,3 @@
-import sys
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.pdfgen import canvas
 from PyQt5.QtWidgets import *
@@ -22,11 +21,11 @@ class CreationOfInvoice(QWidget):
 
         self.formLayout = QFormLayout(self)
 
-        self.projekto_nr = QLineEdit()
-        self.formLayout.addRow(QLabel('Projekto numeris:'), self.projekto_nr)
-
         self.saskaitos_numeris = QLineEdit()
         self.formLayout.addRow(QLabel('Sąskaitos numeris:'), self.saskaitos_numeris)
+
+        self.projekto_nr = QLineEdit()
+        self.formLayout.addRow(QLabel('Projekto numeris:'), self.projekto_nr)
 
         self.pirkejas = QLineEdit()
         self.formLayout.addRow(QLabel('Pirkėjo pavadinimas'), self.pirkejas)
@@ -40,6 +39,7 @@ class CreationOfInvoice(QWidget):
         self.pirkejo_adresas = QLineEdit()
         self.formLayout.addRow(QLabel('Pirkėjo adresas'), self.pirkejo_adresas)
 
+        # išrašomo dokumento datos nustatymas
         self.dok_data = QDateEdit()
         self.dok_data.setDisplayFormat("yyyy-MM-dd")
         self.dok_data.setCalendarPopup(True)  # įjungia iššokantį kalendoriaus langelį
@@ -47,6 +47,7 @@ class CreationOfInvoice(QWidget):
         self.dok_data.setFixedWidth(100)  # nustato fiksuotą eilutės plotį
         self.formLayout.addRow(QLabel('Dokumento data:'), self.dok_data)
 
+        # išrašomo dokumento apmokėjimo datos nustatymas
         self.apmoketi_iki = QDateEdit()
         self.apmoketi_iki.setDisplayFormat("yyyy-MM-dd")
         self.apmoketi_iki.setCalendarPopup(True)
@@ -56,7 +57,7 @@ class CreationOfInvoice(QWidget):
 
         self.vLayout.addLayout(self.formLayout)
 
-        # lentelės laukelių pildymo formų išdėstymas
+        # atliktų darbų lentelės laukelių pildymo formų išdėstymas
         self.lent_pildymo_lauk_layout = QGridLayout()  # pildymo laukelių išdėstymas gardelėmis
 
         # laukeliai duomenų įrašymui
@@ -79,66 +80,54 @@ class CreationOfInvoice(QWidget):
         self.lent_pildymo_lauk_layout.addWidget(self.line_edit5, 1, 4)
         self.vLayout.addLayout(self.lent_pildymo_lauk_layout)  # gardelių išdėstymo pridėjimas prie pagrindinio išdėstymo
 
+        # lentelės kontūrų sukūrimas
         self.sukurti_lentele()
 
-        # sukuriam atskirą išdėstymą sumų eilutėms po lentele
-        self.sumu_hLayout = QHBoxLayout()
+        # atskiras išdėstymas PVM 96 str. eilutei po lentele
+        self.PVM_hLayout = QHBoxLayout()
 
         # pridedam žymimąjį langelį PVM įstatymo 96 straipsnio eilutei rodyti arba ne
         self.PVM96_str_label = QLabel('Taikomas PVM įstatymo 96 str.')
         self.PVM96_str_label.setStyleSheet("QLabel{font-size: 10pt;}")
-        self.sumu_hLayout.addWidget(self.PVM96_str_label)
+        self.PVM_hLayout.addWidget(self.PVM96_str_label)
 
         self.PVM96_str_checkbox = QCheckBox()
         self.PVM96_str_checkbox.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         self.PVM96_str_checkbox.stateChanged.connect(self.update_moketina_suma)  # susiejame checkbox su mokėtinos sumos pasikeitimu po lentele
-        self.sumu_hLayout.addWidget(self.PVM96_str_checkbox)
+        self.PVM_hLayout.addWidget(self.PVM96_str_checkbox)
 
-        self.sumu_hLayout.addStretch(100)  # pastumia checkbox prie QLabel
+        self.PVM_hLayout.addStretch(100)  # pastumia checkbox langelį arčiau QLabel pavadinimo
 
-        self.sumu_hLayout.addStretch(10)
+        self.PVM_hLayout.addStretch(10)
 
-        self.sumuEilutesLayout = QFormLayout()
+        # atskiras išdėstymas sumų eilutėms po lentele
+        self.sumu_fLayout = QFormLayout()
 
         # kiekvienos sumos QLabel ir QLineEdit
         self.suma_viso_label = QLabel('Suma viso: ')
         self.suma_viso_line_edit = QLineEdit()
         self.suma_viso_line_edit.setReadOnly(True)  # nustatome, kad šis laukelis būtų tik skaitymui
-        self.sumuEilutesLayout.addRow(self.suma_viso_label, self.suma_viso_line_edit)
+        self.sumu_fLayout.addRow(self.suma_viso_label, self.suma_viso_line_edit)
 
         self.pvm_label = QLabel('PVM 21 %:')
         self.pvm_line_edit = QLineEdit()
         self.pvm_line_edit.setReadOnly(True)
-        self.sumuEilutesLayout.addRow(self.pvm_label, self.pvm_line_edit)
+        self.sumu_fLayout.addRow(self.pvm_label, self.pvm_line_edit)
 
         self.suma_suPVM = QLabel('Viso suma (su PVM):')
         self.suma_suPVM_line_edit = QLineEdit()
         self.suma_suPVM_line_edit.setReadOnly (True)
-        self.sumuEilutesLayout.addRow(self.suma_suPVM, self.suma_suPVM_line_edit)
+        self.sumu_fLayout.addRow(self.suma_suPVM, self.suma_suPVM_line_edit)
 
         self.moketina_suma = QLabel('Mokėtina suma, Eur')
         self.moketina_suma_line_edit = QLineEdit()
         self.moketina_suma_line_edit.setReadOnly(True)
-        self.sumuEilutesLayout.addRow(self.moketina_suma, self.moketina_suma_line_edit)
+        self.sumu_fLayout.addRow(self.moketina_suma, self.moketina_suma_line_edit)
+        # sumų eilučių pridėjimas prie PVM eilutės išdėstymo ir pastarosios pridėjimas prie pagrindinio išdėstymo
+        self.PVM_hLayout.addLayout(self.sumu_fLayout)
+        self.vLayout.addLayout(self.PVM_hLayout)
 
-        self.sumu_hLayout.addLayout(self.sumuEilutesLayout)
-        self.vLayout.addLayout(self.sumu_hLayout)
-
-        # # išdėstymas checkboxui
-        # self.checkboxLayout = QHBoxLayout()
-
-        # # pridedam žymimąjį langelį PVM įstatymo 96 straipsnio eilutei rodyti arba ne
-        # self.PVM96_str_label = QLabel('Taikomas PVM įstatymo 96 str.')
-        # self.PVM96_str_label.setStyleSheet("QLabel{font-size: 10pt;}")
-        # self.checkboxLayout.addWidget(self.PVM96_str_label)
-        #
-        # self.PVM96_str_checkbox = QCheckBox()
-        # self.PVM96_str_checkbox.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
-        # self.checkboxLayout.addWidget(self.PVM96_str_checkbox)
-        #
-        # self.checkboxLayout.addStretch(100)  # pastumia checkbox prie QLabel
-        # self.vLayout.addLayout(self.checkboxLayout)
-
+        # sąskaitos sukūrimo mygtukas
         self.create_invoice_button = QPushButton('Sukurti sąskaitą')
         self.create_invoice_button.clicked.connect(self.create_invoice_clicked)
         self.vLayout.addWidget(self.create_invoice_button)
@@ -179,7 +168,7 @@ class CreationOfInvoice(QWidget):
             kiekis = self.line_edit4.text()
             vnt_kaina = self.line_edit5.text()
 
-            # sukuriama nauja eilutė su gautu tekstu
+            # sukuriama nauja lentelės eilutė su gautu tekstu
             row = [eil_nr, darbu_pavadinimas, mato_vnt, kiekis, vnt_kaina]
 
             # eilutė pridedama prie lentelės
@@ -187,9 +176,7 @@ class CreationOfInvoice(QWidget):
             for i, text in enumerate(row):
                 self.darbu_lentele.setItem(self.darbu_lentele.rowCount() - 1, i, QTableWidgetItem(text))
 
-            QMessageBox.information(self, 'Informacija', 'Lentelė sėkmingai atnaujinta')
-
-            # Išvalomi QLineEdit laukeliai
+            # Išvalomi QLineEdit laukeliai, kad eitų vesti kitus duomenis
             self.line_edit1.clear()
             self.line_edit2.clear()
             self.line_edit3.clear()
@@ -232,13 +219,16 @@ class CreationOfInvoice(QWidget):
 
     def atnaujinti_sumas(self, item):
         try:
+            # pasirenkamas norimas stuleplis (sumos)
             if item.column() == 5:
-                suma = 0
+                suma = 0  # pradinė reikšmė
+
+                # patikrinami visos lentelės paskutiniai stulpeliai su sumomis, kurios sudedamos ir išvedama bendra suma
                 for i in range(self.darbu_lentele.rowCount()):
                     item = self.darbu_lentele.item(i, 5)
                     if item is not None and item.text() != '':
                         suma += float(item.text())
-                self.suma_viso_line_edit.setText("{:,.2f}".format(suma))
+                self.suma_viso_line_edit.setText("{:,.2f}".format(suma))  # įrašoma nauja suma su dviem skaičiais po kablelio
 
                 # apskaičiuojamas pvm ir pridedamas į atitinkamą eilutę
                 pvm = (suma * (21/100))
@@ -248,7 +238,7 @@ class CreationOfInvoice(QWidget):
                 suma_suPVM = (suma + pvm)
                 self.suma_suPVM_line_edit.setText("{:,.2f}".format(suma_suPVM))
 
-                #paskaičiuojama mokėtina suma
+                #paskaičiuojama mokėtina suma atsižvelgiant, ar yra taikomas PVM 96 str. (ar pažymėtas checkbox)
                 if self.PVM96_str_checkbox.isChecked():
                     suma_viso_text = self.suma_viso_line_edit.text()
                     suma_viso_text = suma_viso_text.replace(',', '')  # pašalinami kableliai, kad atpažintų tekstą
@@ -263,12 +253,12 @@ class CreationOfInvoice(QWidget):
 
     def update_moketina_suma(self, state):
         try:
-            if state == Qt.Checked:
-                suma_viso_text = self.suma_viso_line_edit.text().replace(',', '')
+            if state == Qt.Checked:  # jeigu checkbox pažymėtas
+                suma_viso_text = self.suma_viso_line_edit.text().replace(',', '')  # pašalinam kablelius, kad atpažintų tekstą
                 if suma_viso_text != '':
-                    if '.' in suma_viso_text and len(suma_viso_text.split('.')[1]) == 1:
-                        suma_viso_text += '0'
-                    self.moketina_suma_line_edit.setText("{:,.2f}".format(float(suma_viso_text)))
+                    if '.' in suma_viso_text and len(suma_viso_text.split('.')[1]) == 1:  # patikrinama, kiek po kablelio yra skaičių
+                        suma_viso_text += '0'  # jeigu tik vienas sksaičius po kablelio, pridedamas nulis, kad būtų du skaičiai po kablelio
+                    self.moketina_suma_line_edit.setText("{:,.2f}".format(float(suma_viso_text)))  # įrašoma atitinkama suma
             else:
                 suma_suPVM_text = self.suma_suPVM_line_edit.text().replace(',', '')
                 if suma_suPVM_text != '':
@@ -287,7 +277,7 @@ class CreationOfInvoice(QWidget):
         if len(dalis_po_kablelio) == 1:
             dalis_po_kablelio += '0'
 
-        # konvertuojame sveikąją dalį į žodžius
+        # konvertuojame sveikąją dalį (iki kablelio) į žodžius
         sveika_dalis_zodziais = num2words(int(sveika_dalis), lang='lt')
 
         return sveika_dalis_zodziais + ' eurai (-ų) ' + dalis_po_kablelio + ' ct'
@@ -327,7 +317,7 @@ class CreationOfInvoice(QWidget):
                 print("Error: rowCount or columnCount is incorrect")
                 return
 
-            # nurodom failo vietą ir pavadinimą
+            # nurodom failo įrašymo vietą ir pavadinimą
             text, ok = QInputDialog.getText(self, 'Įveskite failo pavadinimą', 'Failo pavadinimas: ')
             if ok:
                 filename = f"C:/Users/Raminta/Documents/Programavimas su python 2023-12-18/Invoice Management System/Israsytos saskaitos/{text}.pdf"
@@ -383,7 +373,7 @@ class CreationOfInvoice(QWidget):
 
             # paslaugų / prekių lentelė
             col_widths = [50, 200, 60, 50, 80, 80]
-            row_heights = [30, 170, 30, 170, 30, 170]
+            row_heights = [30] * len(table_data)
 
             start_x = 30
             start_y = 545
@@ -392,18 +382,36 @@ class CreationOfInvoice(QWidget):
             # uždedame stulpelių antraštes
             headers = ['Eil. Nr.', 'Atliktų darbų pavadinimas', 'Mato vnt.', 'Kiekis', 'Vnt. kaina', 'Suma, €']
 
-            # pridedam antraštes prie table_data sąrašo
-            table_data.insert(0, headers)
+            # nubraižom antraščių eilutę
+            for col, header in enumerate(headers):
+                x = start_x + sum(col_widths[:col])
+                y = start_y
+
+            # antraščių centravimas
+            text_width = pdfmetrics.stringWidth(header, 'DejaVuSans', 10)
+            text_x = x + (col_widths[col] - text_width) / 2
+            text_y = y + row_heights[0] - 15
+
+            # antraščių nubraižymas
+            c.drawString(text_x, text_y, header)
+            c.rect(x, y, col_widths[col], row_heights[0], stroke=1, fill=0)
+
+            # Apskaičiuojame kiekvienos eilutės aukštį
+            row_heights = []
+            for row_data in table_data:
+                row_height = 30  # pradinis eilutės aukštis
+                for col, cell in enumerate(row_data):
+                    if col == 1:  # darbų aprašymo stulpelis
+                        lines = simpleSplit(cell, 'DejaVuSans', 10, col_widths[col] - 10)
+                        row_height = max(row_height, 15 * len(lines))
+                row_heights.append(row_height)
 
             # nubraižome lentelę
-            for row, row_data in enumerate(table_data):
+            for row, row_data in enumerate(table_data, start=1): # pradedame nuo 1, nes antraštės jau yra nubraižytos
                 for col, cell in enumerate(row_data):
                     # paskaičiuoja celės pradžios tašką
                     x = start_x + sum(col_widths[:col])
-                    y = start_y - sum(row_heights[:row + 1])
-
-                    #braižo celių kraštus-linijas
-                    c.rect(x, y, col_widths[col], row_heights[row], stroke=1, fill=0)
+                    y = start_y - sum(row_heights[:row]) if row < len(row_heights) else start_y
 
                     # paskaičiuoja teksto plotį
                     text_width = pdfmetrics.stringWidth(cell, 'DejaVuSans', 10)
@@ -418,12 +426,20 @@ class CreationOfInvoice(QWidget):
                     # darbų aprašymo stulpelio talpinimas celėje
                     if col == 1:
                         lines = simpleSplit(cell, 'DejaVuSans', 10, col_widths[col] - 10)
+
+                        # eilutės aukštis apskaičiuojamas pagal teksto eilučių skaičių
+                        row_heights[row] = max(row_heights[row], 15 * len(lines))
                         for line in lines:
                             c.drawString(text_x, text_y, line)
                             text_y -= 15  # move to the next line
                     else:
                         c.drawString(text_x, text_y, cell)
 
+                    # braižo celių kraštus-linijas
+                    c.rect(x, y, col_widths[col], row_heights[row], stroke=1, fill=0)
+
+            # paskaičiuojamas bendras lentelės aukštis
+            total_table_height = sum(row_heights)
 
             # tekstas po lentele
             c.setFont("DejaVuBold", 10)
@@ -435,14 +451,14 @@ class CreationOfInvoice(QWidget):
             # teksto po lentele reikšmės
             c.setFont("DejaVuSans", 10)
             texts = [self.suma_viso_line_edit.text(), self.pvm_line_edit.text(), self.suma_suPVM_line_edit.text(), self.moketina_suma_line_edit.text()]
-            y_coords = [330, 315, 300, 285]
+            y_coords = [330 - total_table_height, 315 - total_table_height, 300 - total_table_height, 285 - total_table_height]
 
             for i, text in enumerate(texts):
                 # paskaičiuoja teksto plotį
                 text_width = pdfmetrics.stringWidth(text, 'DejaVuSans', 10)
 
                 # apskaičiuoja pradinį teksto tašką
-                x = 540 - text_width  # atimateksto plotį iš norimo pabaigos taško
+                x = 540 - text_width  # atima teksto plotį iš norimo pabaigos taško
 
                 c.drawString(x, y_coords[i], text)
 
@@ -497,14 +513,6 @@ class CreationOfInvoice(QWidget):
 
         except Exception as e:
             print(f'Error in create_invoice method: {e}')
-    # table_data = [
-    #         ['Eil.Nr.', 'Atliktų darbų pavadinimas', 'Mato vnt.', 'Kiekis', 'Vnt. kaina', 'Suma, €'],
-    #         ['1', 'Pėsčiųjų tilto, esančio 0+144,4 km Vilniaus geležinkelio stotyje, rekonstravimo jį pritaikant '
-    #               'žmonėms su judėjimo negalia rangos darbai Nr. 24092 \nKonstrukcijų dalis: Gręžtinių CFA tipo polių ir'
-    #          'monolitinių rostverkų įrengimo darbai', ' kompl.', ' 1.00', ' 39989.00', ' 39,989.00']
-    #     ]
-    #
-    # create_invoice("C:/Users/Raminta/Documents/Programavimas su python 2023-12-18/Invoice Management System/Israsytos saskaitos/Svykai 2024-03-26.pdf", table_data)
 
 
 
