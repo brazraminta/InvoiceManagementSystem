@@ -1,13 +1,14 @@
 import sys
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtWidgets import *
 import datetime
-from PyQt5.QtCore import Qt, QSize, QTimer, QTime, QDate, QDateTime, pyqtSignal, QUrl
+from PyQt5.QtCore import Qt, QDate, pyqtSignal, QStringListModel
 import os
 import os.path
 import psycopg2
 import subprocess
-from PyQt5.QtGui import QIcon, QKeySequence, QFont, QDesktopServices, QColor
+from PyQt5.QtGui import QColor, QFont, QPixmap
+
 
 
 
@@ -77,10 +78,12 @@ class UpdateRecordWindow(QDialog):
         self.updated_apmoketi_iki.setFixedSize(150, 30)
         self.fLayout.addRow(QLabel('Apmokėti iki:'), self.updated_apmoketi_iki)
 
-        self.updated_apmokejimo_skubumas = QLineEdit(current_data[6])
-        self.updated_apmokejimo_skubumas.setFixedSize(150, 30)
-        self.updated_apmokejimo_skubumas.setStyleSheet("font-size: 10px;")
-        self.fLayout.addRow(QLabel('Apmokėjimo skubumas:'), self.updated_apmokejimo_skubumas)
+        # self.updated_apmokejimo_skubumas = QLineEdit(current_data[6])
+        self.updated_skubumas_combo = QComboBox()
+        self.updated_skubumas_combo.setFixedSize(150, 30)
+        self.updated_skubumas_combo.setStyleSheet("font-size: 10px;")
+        self.updated_skubumas_combo.addItems([' ', 'Skubu', 'Neskubu'])
+        self.fLayout.addRow(QLabel('Apmokėjimo skubumas:'), self.updated_skubumas_combo)
 
         # QCombo laukelis sąskaitos būsenos pakeitimui
         self.apmokejimo_busena_combo = QComboBox()
@@ -160,7 +163,12 @@ class UpdateRecordWindow(QDialog):
             updated_saskaitos_nr = self.updated_saskaitos_nr.text()
             updated_saskaitos_data = self.updated_saskaitos_data.date().toString("yyyy-MM-dd")
             updated_apmoketi_iki = self.updated_apmoketi_iki.date().toString("yyyy-MM-dd")
-            updated_apmokejimo_skubumas = self.updated_apmokejimo_skubumas.text()
+
+            # QCombo laukelis apmokėjimo skubumo pakeitimui
+            updated_apmokejimo_skubumas_text = self.updated_skubumas_combo.currentText()
+            skubumas_index = self.updated_skubumas_combo.findText(updated_apmokejimo_skubumas_text)
+            if skubumas_index >= 0:
+                self.updated_skubumas_combo.setCurrentIndex(skubumas_index)
 
             # QCombo laukelis apmokėjimo būsenos pakeitimui
             updated_apmokejimo_busena_text = self.apmokejimo_busena_combo.currentText()
@@ -181,7 +189,7 @@ class UpdateRecordWindow(QDialog):
                 updated_pastabos = None
 
             self.form_submitted.emit(updated_projekto_numeris, updated_tiekejo_pavadinimas, updated_saskaitos_nr, updated_saskaitos_data,
-                                     updated_apmoketi_iki, updated_apmokejimo_skubumas, updated_apmokejimo_busena_text, updated_apmokejimo_data, updated_pastabos, self.record_id)
+                                     updated_apmoketi_iki, updated_apmokejimo_skubumas_text, updated_apmokejimo_busena_text, updated_apmokejimo_data, updated_pastabos, self.record_id)
 
             try:
                 self.close()
@@ -219,72 +227,129 @@ class MainWindow(QMainWindow):
 
         self.hLayout = QHBoxLayout()
 
-        # paieškos filtrų pavadinimas
-        self.checkbox_title = QLabel("Filtruoti pagal:")
-        self.checkbox_title.setAlignment(Qt.AlignLeft)
-        self.checkbox_title.setStyleSheet("QLabel{font-size: 9pt;}")
-        self.hLayout.addWidget(self.checkbox_title)
+        # mygtukų pavadinimų šrifto dydis
+        self.button_font = QFont()
+        self.button_font.setPointSize(8)
 
-        # sukuriam checkbox'us filtrams
-        self.objektas_checkbox = QCheckBox("projektą", self)
-        self.tiekejas_checkbox = QCheckBox("tiekėją", self)
-        self.apmokejimo_data_checkbox = QCheckBox('apmokėjimo datą', self)
-        self.skubumas_checkbox = QCheckBox('skubumą', self)
+        self.suvesti_saskaita_button = QPushButton("Užregistruoti gautą saskaitą")
+        self.suvesti_saskaita_button.setFont(self.button_font)
+        self.suvesti_saskaita_button.setFixedSize(420, 40)
+        self.suvesti_saskaita_button.clicked.connect(self.invoice_registration_form)
+        self.hLayout.addWidget(self.suvesti_saskaita_button)
 
-        self.hLayout.addWidget(self.objektas_checkbox)
-        self.hLayout.addWidget(self.tiekejas_checkbox)
-        self.hLayout.addWidget(self.apmokejimo_data_checkbox)
-        self.hLayout.addWidget(self.skubumas_checkbox)
+        self.skenuotos_saskaitos = QPushButton('Tikrinti gaunamų sąskaitų katalogą')
+        self.skenuotos_saskaitos.setFont(self.button_font)
+        self.skenuotos_saskaitos.setFixedSize(420, 40)
+        self.skenuotos_saskaitos.clicked.connect(self.check_for_new_file)
+        self.hLayout.addWidget(self.skenuotos_saskaitos)
+
+        self.saskaitu_registras_button = QPushButton('Peržiūrėti sąskaitų registrą')
+        self.saskaitu_registras_button.setFont(self.button_font)
+        self.saskaitu_registras_button.setFixedSize(420, 40)
+        self.saskaitu_registras_button.clicked.connect(self.display_registry_of_invoices)
+        self.hLayout.addWidget(self.saskaitu_registras_button)
+
+        self.sukurti_saskaita_button = QPushButton('Išrašyti sąskaitą')
+        self.sukurti_saskaita_button.setFont(self.button_font)
+        self.sukurti_saskaita_button.setFixedSize(420, 40)
+        self.sukurti_saskaita_button.clicked.connect(self.create_invoice)
+        self.hLayout.addWidget(self.sukurti_saskaita_button)
+
+        self.hLayout.addSpacing(150)
 
         self.vLayout.addLayout(self.hLayout)
 
-        self.vLayout.setSpacing(10)
-
-        self.hLayout4 = QHBoxLayout()
-
-        self.suvesti_saskaita_button = QPushButton("Užregistruoti gautą saskaitą")
-        self.suvesti_saskaita_button.clicked.connect(self.invoice_registration_form)
-        self.hLayout4.addWidget(self.suvesti_saskaita_button)
-
-        self.skenuotos_saskaitos = QPushButton('Tikrinti gaunamų sąskaitų katalogą')
-        self.skenuotos_saskaitos.clicked.connect(self.check_for_new_file)
-        self.hLayout4.addWidget(self.skenuotos_saskaitos)
-
-        self.saskaitu_registras_button = QPushButton('Peržiūrėti sąskaitų registrą')
-        self.saskaitu_registras_button.clicked.connect(self.display_registry_of_invoices)
-        self.hLayout4.addWidget(self.saskaitu_registras_button)
-
-        self.sukurti_saskaita_button = QPushButton('Išrašyti sąskaitą')
-        self.sukurti_saskaita_button.clicked.connect(self.create_invoice)
-        self.hLayout4.addWidget(self.sukurti_saskaita_button)
-
-        self.vLayout.addLayout(self.hLayout4)
-
-        # sąskaitų lentelės
+        # sąskaitų lentelės horizontalus išdėstymas
         self.table_Layout = QHBoxLayout()
 
         self.saskaitu_sarasas = QTableWidget()
         self.saskaitu_sarasas.setSortingEnabled(True)
         self.saskaitu_sarasas.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)  # nustatome visos eilutės pasirinkimą (ne atskirų stulpelių)
         self.saskaitu_sarasas.setSelectionMode(QAbstractItemView.SingleSelection)  # vienos rezultatų eilutės pasirinkimas, kad kita būtų atžymėta
+        self.saskaitu_sarasas.cellClicked.connect(self.on_invoiceNo_clicked)
         self.table_Layout.addWidget(self.saskaitu_sarasas)
 
         # mygtukų išdėstymas vertikaliai prie lentelės
         self.buttonLayout = QVBoxLayout()
+
+        # paieškos filtrų pavadinimas
+        self.checkbox_title = QLabel("Filtruoti pagal:")
+        self.checkbox_title.setAlignment(Qt.AlignLeft)
+        self.checkbox_title.setStyleSheet("QLabel{font-size: 10pt;}")
+        self.buttonLayout.addWidget(self.checkbox_title)
+
+        # sukuriam checkbox'us filtrams ir reikšmių įrašymo laukelius
+        font = QFont()
+        font.setPointSize(8)
+
+        self.projektas_label = QLabel("projektą", self)
+        self.projektas_label.setFont(font)
+        self.projektoNr_input = QLineEdit(self)
+        self.projektoNr_input.setFixedSize(150, 60)
+        self.projektoNr_input.setPlaceholderText("Įveskite projekto numerį")
+        self.projektoNr_input.textChanged.connect(self.filter_projects)
+
+        self.tiekejas_label = QLabel("tiekėją", self)
+        self.tiekejas_label.setFont(font)
+        self.tiekejas_input = QLineEdit(self)
+        self.tiekejas_input.setFixedSize(150, 60)
+        self.tiekejas_input.setPlaceholderText("Įveskite tiekėjo pavadinimą")
+        self.tiekejas_input.textChanged.connect(self.filter_suppliers)
+
+        # checkbox ir input laukelius pridedam prie išdėstymo
+        self.buttonLayout.addWidget(self.projektas_label)
+        self.buttonLayout.addWidget(self.projektoNr_input)
+        self.buttonLayout.addWidget(self.tiekejas_label)
+        self.buttonLayout.addWidget(self.tiekejas_input)
+
+        # sukuriamas QStringListModel metodas, grąžinantis tiekėjų pavadinimus ir projektų numerius
+        tiekejai = QStringListModel()
+        tiekejai.setStringList(self.get_names_of_suppliers())
+
+        projektai = QStringListModel()
+        projektai.setStringList(self.get_project_numbers())
+
+        # sukuriamas QCompleter su tiekėjų ir projektų modeliu (kad siūlytų rašomo pavadinimo ar numerio užbaigimą)
+        completer = QCompleter()
+        completer.setModel(tiekejai)
+        completer.setModel(projektai)
+        self.tiekejas_input.setCompleter(completer)
+        self.projektoNr_input.setCompleter(completer)
+
+        self.buttonLayout.addSpacing(50)
+
+        # mygtukas sąskaitos apmokėjimo būsenai ir datai pakeisti
+        self.apmoketa_button = QPushButton('Patvirtinti apmokėjimą')
+        self.apmoketa_button.setFont(self.button_font)
+        self.apmoketa_button.setFixedSize(150, 60)
+        self.apmoketa_button.clicked.connect(self.invoice_payment_confirmation)
+        self.buttonLayout.addWidget(self.apmoketa_button)
+
         self.koreguoti_irasa_button = QPushButton('Koreguoti įrašą')
+        self.koreguoti_irasa_button.setFont(self.button_font)
+        self.koreguoti_irasa_button.setFixedSize(150, 60)
         self.koreguoti_irasa_button.clicked.connect(self.update_record_button_clicked)
         self.buttonLayout.addWidget(self.koreguoti_irasa_button)
 
         self.istrinti_irasa_button = QPushButton('Ištrinti įrašą')
+        self.istrinti_irasa_button.setFont(self.button_font)
+        self.istrinti_irasa_button.setFixedSize(150, 60)
         self.istrinti_irasa_button.clicked.connect(self.delete_record)
         self.buttonLayout.addWidget(self.istrinti_irasa_button)
 
+        self.buttonLayout.addSpacing(50)
+
+        # tikrinimas, ar yra apmokėtinų sąskaitų einamajai dienai
+        self.tikrinti_apmokejima = QPushButton('Ar yra apmokėtinų\nsąskaitų šiai dienai?')
+        self.tikrinti_apmokejima.setFont(self.button_font)
+        self.tikrinti_apmokejima.setFixedSize(150, 60)
+        self.tikrinti_apmokejima.clicked.connect(self.check_invoices_due_date)
+        self.buttonLayout.addWidget(self.tikrinti_apmokejima)
+
+        self.buttonLayout.addSpacing(100)
+
         self.table_Layout.addLayout(self.buttonLayout)
         self.vLayout.addLayout(self.table_Layout)
-
-        self.tikrinti_apmokejima = QPushButton('Ar yra apmokėtinų sąskaitų šiai dienai?')
-        self.tikrinti_apmokejima.clicked.connect(self.check_invoices_due_date)
-        self.vLayout.addWidget(self.tikrinti_apmokejima)
 
         self.setLayout(self.vLayout)
 
@@ -297,6 +362,105 @@ class MainWindow(QMainWindow):
 
 #/////////////////////////////////////   FUNKCIJOS   /////////////////////////////////////
 
+    def get_names_of_suppliers(self):
+        names_of_suppliers = []
+        try:
+            with psycopg2.connect(**db_params) as connection:
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT DISTINCT tiekejo_pavadinimas FROM saskaitos")
+                    rows = cursor.fetchall()
+                    for row in rows:
+                        names_of_suppliers.append(row[0])
+        except Exception as e:
+            print(f'Error in get_names_of_suppliers: {e}')
+        return names_of_suppliers
+
+    def get_project_numbers(self):
+        project_numbers = []
+        try:
+            with psycopg2.connect(**db_params) as connection:
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT DISTINCT projekto_numeris FROM saskaitos")
+                    rows = cursor.fetchall()
+                    for row in rows:
+                        project_numbers.append(row[0])
+        except Exception as e:
+            print(f'Error in get_project_numbers: {e}')
+        return project_numbers
+
+    def filter_projects(self, text):
+        try:
+            with psycopg2.connect(**db_params) as connection:
+                with connection.cursor() as cursor:
+                    query = "SELECT * FROM saskaitos WHERE projekto_numeris LIKE %s"
+                    cursor.execute(query, (text+'%',))
+                    rows = cursor.fetchall()
+
+                    # atnaujinama lentelė su atrinktais rezultatais
+                    self.update_invoice_table(rows)
+
+        except Exception as e:
+            print(f'Error in filter_projects: {e}')
+
+    def filter_suppliers(self, text):
+        try:
+            with psycopg2.connect(**db_params) as connection:
+                with connection.cursor() as cursor:
+                    query = "SELECT * FROM saskaitos WHERE LOWER(tiekejo_pavadinimas) LIKE LOWER(%s)"
+                    cursor.execute(query, ('%'+text+'%',))  # pridedame '%' prie teksto, kad gautume visus tiekėjus, kurių pavadinimai prasideda įvestu tekstu
+                    rows = cursor.fetchall()
+
+                    # atnaujinama lentelė su atrinktais rezultatais
+                    self.update_invoice_table(rows)
+        except Exception as e:
+            print(f'Error in filter_suppliers: {e}')
+            raise
+
+    def update_invoice_table(self, rows):
+        try:
+            self.saskaitu_sarasas.setRowCount(len(rows))
+            self.saskaitu_sarasas.setColumnCount(10)
+
+            # lentelės stulpelių pavadinimai
+            headers = ['Įrašo Nr.', 'Projekto Nr.', 'Tiekėjas', 'Sąskaitos Nr.', 'Sąskaitos data', 'Apmokėti iki',
+                       'Skubumas', 'Apmokėta / Neapmokėta', 'Kada apmokėta', 'Pastabos']
+            self.saskaitu_sarasas.setHorizontalHeaderLabels(headers)
+            self.saskaitu_sarasas.horizontalHeader().setStyleSheet(
+                'QHeaderView::section { background-color: lightgrey}')
+
+            # gaunama šios dienos data
+            today = datetime.date.today().strftime('%Y-%m-%d')
+
+            for i, row in enumerate(rows):
+                for j, item in enumerate(row):
+                    if item is None:
+                        item = ''  # None pakeičiamas tuščiu laukeliu
+
+                    if j in [4, 5, 8]:  # 'Sąskaitos data', 'Apmokėti iki', 'Kada apmokėta' stuleplių indeksai
+                        if item and isinstance(item,
+                                               datetime.date):  # patikrinama ar reikšmė nėra tuščias laukelis ir yra data
+                            item = item.strftime('%Y-%m-%d')  # data paverčiama į tekstinę reikšmę
+                        table_item = QTableWidgetItem(str(item))
+                    else:
+                        table_item = QTableWidgetItem(str(item))
+
+                    # nuspalvinamos eilutės, jeigu atitinkamos sąlygos yra tenkinamos
+                    if row[5] and row[5].strftime('%Y-%m-%d') == today:
+                        table_item.setBackground(QColor(255, 0, 0))  # raudona spalva
+                    elif row[7] == 'Apmokėta':
+                        table_item.setBackground(QColor(144, 238, 144))  # šviesiai žalia spalva
+
+                    try:
+                        self.saskaitu_sarasas.setItem(i, j, table_item)
+                        self.saskaitu_sarasas.resizeColumnToContents(j)
+                    except Exception as e:
+                        print(f'Error in update_invoice_table.setItem(i, j, table_item): {e}')
+
+            self.saskaitu_sarasas.show()
+
+        except Exception as e:
+            print(f"Error from update_invoice_table: {e}")
+
     def invoice_registration_form(self):
         try:
             self.registrationDialog = QDialog()
@@ -307,6 +471,12 @@ class MainWindow(QMainWindow):
 
             # pildymo laukelių išdėstymas
             self.fLayout = QFormLayout(self)
+
+            self.saskaitos_mygtukas = QPushButton('Sąskaitų katalogas')
+            self.saskaitos_mygtukas.setFixedSize(150, 30)
+            self.saskaitos_mygtukas.setStyleSheet("font-size: 10px;")
+            self.saskaitos_mygtukas.clicked.connect(self.open_invoice_catalog)
+            self.fLayout.addRow(QLabel('Pasirinkti sąskaitą ->'), self.saskaitos_mygtukas)
 
             self.projektoNr_field = QLineEdit()
             self.projektoNr_field.setFixedSize(150, 30)
@@ -337,10 +507,8 @@ class MainWindow(QMainWindow):
 
             # apmokėjimo skubumo pasirinkimas
             self.skubumas = QComboBox()
-            self.skubumas.addItem(' ')
-            self.skubumas.addItem('< 30 dienų')
-            self.skubumas.addItem('Per 30 dienų')
-            self.skubumas.addItem('> 30 dienų')
+            self.skubumas.addItem('Neskubu')
+            self.skubumas.addItem('Skubu')
             self.skubumas.setFixedSize(150, 30)
             self.fLayout.addRow(QLabel('Apmokėjimo skubumas:'), self.skubumas)
 
@@ -401,6 +569,20 @@ class MainWindow(QMainWindow):
 
         except Exception as e:
             print(f'Error in register_invoice_received: {e}')
+
+    def open_invoice_catalog(self):
+        try:
+            filename, _ =QFileDialog.getOpenFileName(None, "Pasirinkite PDF failą",
+                                                     "C:/Users/Raminta/Documents/Programavimas su python 2023-12-18/Invoice Management System/Saskaitos",
+                                                     "PDF Files (*.pdf)")
+            if filename:
+                os.system(f'start "" "{filename}"')  # (f'start {filename}') nesuveikė, todėl reikėjo pridėti papildomas kabutes
+            else:
+                QMessageBox.warning(self, "Perspėjimas", "Nepasirinktas joks failas")
+
+        except Exception as e:
+            print(f'Error in open_invoice_catalog: {e}')
+
 
     def open_calendar(self):
         dialog = QDialog()
@@ -501,7 +683,8 @@ class MainWindow(QMainWindow):
                     self.saskaitu_sarasas.setColumnCount(10)
 
                     # lentelės stulpelių pavadinimai
-                    headers = ['Įrašo Nr.', 'Projekto Nr.', 'Tiekėjas', 'Sąskaitos Nr.', 'Sąskaitos data', 'Apmokėti iki', 'Skubumas', 'Apmokėta / Neapmokėta', 'Kada apmokėta', 'Pastabos']
+                    headers = ['Įrašo Nr.', 'Projekto Nr.', 'Tiekėjas', 'Sąskaitos Nr.', 'Sąskaitos data', 'Apmokėti iki', 'Skubumas',
+                               'Apmokėta / Neapmokėta', 'Kada apmokėta', 'Pastabos']
                     self.saskaitu_sarasas.setHorizontalHeaderLabels(headers)
                     self.saskaitu_sarasas.horizontalHeader().setStyleSheet('QHeaderView::section { background-color: lightgrey}')
 
@@ -521,7 +704,7 @@ class MainWindow(QMainWindow):
                                 table_item = QTableWidgetItem(str(item))
 
                             # nuspalvinamos eilutės, jeigu atitinkamos sąlygos yra tenkinamos
-                            if row[5] and row[5].strftime('%Y-%m-%d') == today:
+                            if row[5] and row[5].strftime('%Y-%m-%d') == today and row[7] == 'Neapmokėta':
                                 table_item.setBackground(QColor(255, 0, 0))  # raudona spalva
                             elif row[7] == 'Apmokėta':
                                 table_item.setBackground(QColor(144, 238, 144))  # šviesiai žalia spalva
@@ -536,6 +719,46 @@ class MainWindow(QMainWindow):
 
         except Exception as e:
             print(f"Error from display_registry_of_invoices: {e}")
+
+
+    def invoice_payment_confirmation(self):
+        try:
+            current_row = self.saskaitu_sarasas.currentRow()
+            if current_row >= 0:
+                self.apmokejimo_busena_changed(current_row, "Apmokėta", datetime.date.today().strftime('%Y-%m-%d'))
+        except Exception as e:
+            print(f"Error from invoice_payment_confirmation: {e}")
+
+    def apmokejimo_busena_changed(self, row, new_payment_status, payment_date):
+        # gaunamas sąskaitos numeris iš pasirinktos eilutės
+        invoice_number_item = self.saskaitu_sarasas.item(row, 3)
+        invoice_number = invoice_number_item.text()
+        try:
+            with psycopg2.connect(**db_params) as connection:
+                with connection.cursor() as cursor:
+                    update_query = """
+                      UPDATE saskaitos SET
+                      apmokejimo_busena = %s,
+                      kada_apmoketa = %s
+                      WHERE saskaitos_nr = %s
+                      """
+
+                    cursor.execute(update_query, (new_payment_status, payment_date, invoice_number))
+                    connection.commit()
+
+                    QMessageBox.information(self, "Informacija", "Sėkmingai atnaujinta apmokėjimo būsena ir apmokėjimo data",
+                                            QMessageBox.Ok)
+                    try:  # atnaujinti rodomus duomenis lentelėje
+                        self.saskaitu_sarasas.setItem(row, 6, QTableWidgetItem(''))
+                        self.saskaitu_sarasas.setItem(row, 7, QTableWidgetItem(new_payment_status))
+                        self.saskaitu_sarasas.setItem(row, 8, QTableWidgetItem(payment_date if payment_date is not None else '' ))
+                        self.display_registry_of_invoices()
+                    except Exception as e:
+                        print(f'Error in apmokejimo_busena_changed when updating table: {e}')
+
+        except Exception as e:
+            print(f'Error in apmokejimo_busena_changed: {e}')
+            QMessageBox.warning(self, "Klaida", "Klaida atnaujinant duomenis")
 
     def update_record_button_clicked(self):
         try:
@@ -585,6 +808,7 @@ class MainWindow(QMainWindow):
 
         except Exception as e:
             print(f"Error from update_database: {e}")
+
 
     def confirm_update(self, record_id, new_values):
         try:
@@ -683,7 +907,7 @@ class MainWindow(QMainWindow):
                     today = datetime.date.today().strftime('%Y-%m-%d')
 
                     # gaunamos sąskaitos, kurių apmokėjimo data yra šiandien
-                    cursor.execute("SELECT * FROM saskaitos WHERE apmoketi_iki = %s", (today,))
+                    cursor.execute("SELECT * FROM saskaitos WHERE apmoketi_iki = %s AND apmokejimo_busena = 'Neapmoketa'", (today,))
                     rows = cursor.fetchall()
 
                     if not rows:  # jeigu nėra apmokėtinų sąskaitų
@@ -710,6 +934,16 @@ class MainWindow(QMainWindow):
 
         except Exception as e:
             print(f'Error in check_invoices_due_date: {e}')
+
+    def on_invoiceNo_clicked(self, row, column):
+        if column == 3:  # jeis paspaustas stulpelis yra 'Sąskaitos Nr.'
+            item = self.saskaitu_sarasas.item(row, column)
+            self.open_invoice(item)
+
+    def open_invoice(self, item):
+        saskaitos_nr = item.text()
+        filename = f"C:/Users/Raminta/Documents/Programavimas su python 2023-12-18/Invoice Management System/Saskaitos/{saskaitos_nr}.pdf"
+        os.system(f'start "" "{filename}"')
 
 
 # //////////////////////////////////////////

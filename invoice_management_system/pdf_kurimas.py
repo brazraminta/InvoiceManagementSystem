@@ -1,3 +1,4 @@
+import sys
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.pdfgen import canvas
 from PyQt5.QtWidgets import *
@@ -461,7 +462,6 @@ class CreationOfInvoice(QWidget):
                 x = 540 - text_width  # atima teksto plotį iš norimo pabaigos taško
 
                 c.drawString(x, y_coords[i], text)
-
 
             # PVM 96 str. eilutė
             if self.PVM96_str_checkbox.isChecked():
