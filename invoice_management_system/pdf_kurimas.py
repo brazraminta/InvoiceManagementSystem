@@ -1,14 +1,13 @@
 import sys
-from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from PyQt5.QtWidgets import *
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import Table, TableStyle
-from reportlab.lib import colors
 from reportlab.lib.utils import simpleSplit
 from PyQt5.QtCore import QDate, Qt
 from num2words import num2words
+
 
 
 class CreationOfInvoice(QWidget):
