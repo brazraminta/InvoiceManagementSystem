@@ -1,0 +1,3 @@
+# python -m venv envAccess  --> Enter
+# envAccess\Scripts\activate.bat  --> Enter
+# pereiti į norimą katalogą: cd C:\Users\Raminta\PycharmProjects\....
