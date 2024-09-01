@@ -5,7 +5,7 @@ a = Analysis(
     ['C:\\Users\\Raminta\\PycharmProjects\\MS_Access_saskaitu_registras\\pdf_kurimas_MS_access.py'],
     pathex=[],
     binaries=[],
-    datas=[('C:\\Users\\Raminta\\PycharmProjects\\MS_Access_saskaitu_registras\\dejavu-sans\\DejaVuSans.ttf', 'dejavu-sans'), ('C:\\Users\\Raminta\\PycharmProjects\\MS_Access_saskaitu_registras\\dejavu-sans\\DejaVuSans-Bold.ttf', 'dejavu-sans')],
+    datas=[('C:\\Users\\Raminta\\PycharmProjects\\MS_Access_saskaitu_registras\\times_new_roman\\times.ttf', 'times_new_roman'), ('C:\\Users\\Raminta\\PycharmProjects\\MS_Access_saskaitu_registras\\times_new_roman\\timesbd.ttf', 'times_new_roman')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

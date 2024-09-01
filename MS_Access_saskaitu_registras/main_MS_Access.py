@@ -919,6 +919,7 @@ class MainWindow(QMainWindow):
             logging.error(f'Error in open_invoice_catalog: {str(e)}')
             print(f'Error in open_invoice_catalog: {str(e)}')
 
+
     def open_calendar(self):  # kalendoriaus atidarymas datos pasirinkimui
         dialog = QDialog()
         calendar = QCalendarWidget(dialog)
